@@ -6,11 +6,11 @@ reusable Python package, or a notebook that runs the same pipeline locally
 or on Google Colab.**
 
 <p>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white">
-  <img alt="OpenCV" src="https://img.shields.io/badge/OpenCV-headless-5C3EE8?logo=opencv&logoColor=white">
-  <img alt="Jupyter" src="https://img.shields.io/badge/Jupyter-notebook-F37626?logo=jupyter&logoColor=white">
-  <img alt="Google Colab" src="https://img.shields.io/badge/Google%20Colab-compatible-F9AB00?logo=googlecolab&logoColor=white">
-  <img alt="insightface" src="https://img.shields.io/badge/face%20swap-insightface-2E2E2E">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" height="20">
+  <img alt="OpenCV" src="https://img.shields.io/badge/OpenCV-headless-5C3EE8?logo=opencv&logoColor=white" height="20">
+  <img alt="Jupyter" src="https://img.shields.io/badge/Jupyter-notebook-F37626?logo=jupyter&logoColor=white" height="20">
+  <img alt="Google Colab" src="https://img.shields.io/badge/Google%20Colab-compatible-F9AB00?logo=googlecolab&logoColor=white" height="20">
+  <img alt="insightface" src="https://img.shields.io/badge/face%20swap-insightface-2E2E2E" height="20">
 </p>
 
 Face detection and swapping run directly through
@@ -45,8 +45,8 @@ single Colab-only notebook.
 -->
 
 <p align="left">
-  <img src="assets/faces/demo_1/elon_musk.jpeg" alt="Sample source face" height="200">
-  <img src="assets/videos/demo_1/preview.gif" alt="Side-by-side face swap preview" height="200">
+  <img src="assets/faces/demo_1/elon_musk.jpeg" alt="Sample source face" height="400">
+  <img src="assets/videos/demo_1/preview.gif" alt="Side-by-side face swap preview" height="400">
 </p>
 <p align="left">
   <sub>Source face <code>assets/faces/demo_1/elon_musk.jpeg</code> → swapped onto
@@ -56,8 +56,8 @@ single Colab-only notebook.
 </p>
 
 <p align="left">
-  <img src="assets/faces/demo_2/joseph-gordon.jpeg" alt="Second sample source face" height="200">
-  <img src="assets/videos/demo_2/preview.gif" alt="Second side-by-side face swap preview" height="200">
+  <img src="assets/faces/demo_2/joseph-gordon.jpeg" alt="Second sample source face" height="250">
+  <img src="assets/videos/demo_2/preview.gif" alt="Second side-by-side face swap preview" height="250">
 </p>
 <p align="left">
   <sub>Source face <code>assets/faces/demo_2/joseph-gordon.jpeg</code> → swapped onto
