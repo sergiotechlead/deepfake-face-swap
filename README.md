@@ -33,22 +33,38 @@ single Colab-only notebook.
 <table>
   <tr>
     <td align="center" width="35%">
-      <img src="assets/faces/elon_musk.jpeg" alt="Sample source face" width="100%"><br>
-      <sub>Sample source face — <code>assets/faces/elon_musk.jpeg</code></sub>
+      <img src="assets/faces/demo_1/elon_musk.jpeg" alt="Sample source face" width="100%"><br>
+      <sub>Sample source face — <code>assets/faces/demo_1/elon_musk.jpeg</code></sub>
     </td>
     <td align="center" width="65%">
-      <img src="assets/preview.gif" alt="Side-by-side face swap preview" width="100%"><br>
-      <sub>Original vs. swapped, side by side — <code>assets/preview.gif</code>
-      (rendered from <code>output/combined_video.mp4</code>)</sub>
+      <img src="assets/videos/demo_1/preview.gif" alt="Side-by-side face swap preview" width="100%"><br>
+      <sub>Original vs. swapped, side by side — <code>assets/videos/demo_1/preview.gif</code>
+      (rendered from <code>output/demo_1/combined_video.mp4</code>)</sub>
     </td>
   </tr>
 </table>
 
-Swap the two together (`python main.py swap`) to produce
-`output/output.mp4`; `python main.py combine` then renders the original and
-swapped footage side by side into `output/combined_video.mp4`, and
-`python main.py gif` turns that comparison video into a lightweight,
-inline-renderable GIF like the one above.
+Two bundled demos live side by side under `assets/`, each its own matched
+video + face pair:
+
+```
+assets/
+  videos/demo_1/sample_video.mp4
+  faces/demo_1/elon_musk.jpeg
+  videos/demo_2/Demo_Video_Full_Stack_Web_Developer_Introduction.mp4
+  faces/demo_2/Tom_Holland.jpeg
+```
+
+`python main.py demo --name demo_1` (or `demo_2`) runs the full pipeline for
+that pair in one command — swap, then the side-by-side comparison, then the
+GIF preview — writing everything under `output/<demo>/`. Both demos resolve
+their paths through the same lookup
+(`deepfake_faceswap.resolve_demo_paths`), so adding a third demo is just
+dropping a new `assets/videos/<name>/` + `assets/faces/<name>/` pair in
+place.
+
+You can still drive each step individually with explicit paths — see
+[Getting started](#getting-started) below.
 
 ## Technologies
 
@@ -71,8 +87,10 @@ The pipeline is three independent, composable steps:
 2. **Face swap** (`face_swap.py`) — runs insightface's `FaceAnalysis`
    directly, in-process, to detect a face in the source image and in every
    frame of the target video, then swaps it in with the `inswapper_128`
-   model. GPU (`--execution-provider cuda`) or CPU. No external CLI or
-   subprocess involved.
+   model. GPU (`--execution-provider cuda`) or CPU. The frames are written to
+   a silent video first (OpenCV's `VideoWriter` carries no audio), then the
+   target video's original audio track is muxed back in via ffmpeg (bundled
+   through `imageio-ffmpeg`, no system install required).
 3. **Video compositing** (`video_compositor.py`) — reads the per-frame
    swapped images and the original video, and writes a new video with the
    two placed side by side for a visual, frame-aligned comparison. The same
@@ -103,35 +121,38 @@ pip install -r requirements.txt
 python main.py setup   # downloads inswapper_128.onnx (~550MB) into models/
 ```
 
-### 3. Run the face swap
+### 3. Run a demo end to end
 
 Pick the execution provider for your hardware: `cuda` needs an NVIDIA GPU;
 use `cpu` otherwise (e.g. on macOS, or any machine without CUDA) — it works
 everywhere but is noticeably slower.
 
 ```bash
+python main.py demo --name demo_1 --execution-provider cpu
+# or: python main.py demo --name demo_2 --execution-provider cpu
+```
+
+This resolves the demo's video/face pair under `assets/`, runs the swap,
+renders the side-by-side comparison video, and renders the GIF preview — all
+in one command, written to `output/demo_1/` (or `output/demo_2/`).
+
+### Or: run each step yourself with explicit paths
+
+```bash
 python main.py swap \
-    --target assets/videos/sample_video.mp4 \
-    --source assets/faces/elon_musk.jpeg \
-    --output output/output.mp4 \
+    --target assets/videos/demo_1/sample_video.mp4 \
+    --source assets/faces/demo_1/elon_musk.jpeg \
+    --output output/demo_1/output.mp4 \
     --execution-provider cpu
-```
 
-### 4. Optional: render a side-by-side comparison video
-
-```bash
 python main.py combine \
-    --frames-dir output/frames/sample_video \
-    --source-video assets/videos/sample_video.mp4 \
-    --output output/combined_video.mp4
-```
+    --frames-dir output/demo_1/frames/sample_video \
+    --source-video assets/videos/demo_1/sample_video.mp4 \
+    --output output/demo_1/combined_video.mp4
 
-### 5. Optional: render that comparison video as a GIF
-
-```bash
 python main.py gif \
-    --video output/combined_video.mp4 \
-    --output output/preview.gif \
+    --video output/demo_1/combined_video.mp4 \
+    --output output/demo_1/preview.gif \
     --fps 10 --width 480
 ```
 
@@ -141,10 +162,13 @@ python main.py gif \
 jupyter notebook notebooks/deepfake_faceswap_demo.ipynb
 ```
 
-It runs the same four steps and works both locally and on Google Colab (it
+It runs the same steps and works both locally and on Google Colab (it
 auto-detects Colab and offers a Google Drive mount step for Drive-hosted
-assets). Its swap cell defaults to `execution_provider="cuda"` — change it
-to `"cpu"` if you're running without a GPU.
+assets). Set `DEMO_NAME` to `"demo_1"` or `"demo_2"` to pick which bundled
+demo to run — it resolves paths through the same `resolve_demo_paths`
+lookup the CLI's `demo` subcommand uses. Its swap cell defaults to
+`execution_provider="cpu"` — change it to `"cuda"` if a GPU is available
+(e.g. on Colab).
 
 ## Notes
 
@@ -152,5 +176,5 @@ to `"cpu"` if you're running without a GPU.
   `cpu` instead when running without one (slower, but works anywhere).
 - **`models/` (the downloaded swap model) is gitignored, not vendored** — a
   fresh clone of this repo needs `python main.py setup` (or the notebook's
-  setup cell) run once before `swap`/`combine` will work.
+  setup cell) run once before `swap`/`demo` will work.
 - **Licensed under [MIT](LICENSE)**.

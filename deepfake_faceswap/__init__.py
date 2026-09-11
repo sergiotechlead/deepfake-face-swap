@@ -1,10 +1,13 @@
 """Face-swap deepfake pipeline built on top of insightface."""
 
+from .demo_paths import DemoPaths, resolve_demo_paths
 from .environment_setup import download_face_swap_model, setup_environment
 from .face_swap import run_face_swap
 from .video_compositor import combine_frames_with_video, save_video_as_gif
 
 __all__ = [
+    "DemoPaths",
+    "resolve_demo_paths",
     "download_face_swap_model",
     "setup_environment",
     "run_face_swap",
