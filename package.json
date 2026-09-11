@@ -1,0 +1,15 @@
+{
+  "name": "deepfake-face-swap",
+  "private": true,
+  "version": "1.0.0",
+  "description": "npm script wrappers around the Python CLI (main.py) — no Node dependencies, just convenience commands.",
+  "scripts": {
+    "setup": ".venv/bin/python main.py setup",
+    "setup:enhancer": ".venv/bin/python main.py setup --enhancer",
+    "demo_1": ".venv/bin/python main.py demo --name demo_1",
+    "demo_2": ".venv/bin/python main.py demo --name demo_2",
+    "swap": ".venv/bin/python main.py swap",
+    "combine": ".venv/bin/python main.py combine",
+    "gif": ".venv/bin/python main.py gif"
+  }
+}

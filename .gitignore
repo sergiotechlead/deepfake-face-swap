@@ -2,6 +2,10 @@
 models/
 .insightface/
 
+# GFPGAN's own auxiliary weights (face detector, parsing net), downloaded on first
+# `--enhance` use to a path it hardcodes relative to the working directory
+gfpgan/
+
 # Generated output
 output/*
 !output/.gitkeep
@@ -11,6 +15,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# npm (package.json only wraps the Python CLI; no actual Node deps)
+node_modules/
 
 # Jupyter
 .ipynb_checkpoints/

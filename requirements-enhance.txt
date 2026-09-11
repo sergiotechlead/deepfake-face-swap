@@ -1,0 +1,9 @@
+# Optional: only needed for `--enhance` (GFPGAN face restoration after the swap).
+# Pulls in PyTorch (~1GB with deps) — skip this file entirely if you don't use --enhance.
+#
+#   pip install -r requirements-enhance.txt
+#
+# `gfpgan`'s own dependency (`basicsr`) imports a torchvision module removed in
+# torchvision>=0.17; deepfake_faceswap.face_enhancement shims that at runtime, so no
+# version pin is needed here.
+gfpgan

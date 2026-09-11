@@ -53,6 +53,65 @@ def _detect_source_face(face_analyser: FaceAnalysis, source_image, source_path: 
         _set_det_size(face_analyser, original_det_size)
 
 
+class _LandmarkSmoother:
+    """Exponential moving average over the detected face's alignment keypoints.
+
+    `inswapper` aligns purely on `face.kps` (5-point landmarks) per frame, independently
+    of neighboring frames, so tiny detection jitter between otherwise-similar frames shows
+    up as flicker in the swapped output. Smoothing `kps` across frames damps that without
+    touching the swap itself.
+    """
+
+    def __init__(self, alpha: float = 0.5):
+        self.alpha = alpha
+        self._smoothed_kps = None
+
+    def smooth(self, face):
+        if face.kps is None:
+            return face
+        if self._smoothed_kps is None:
+            self._smoothed_kps = face.kps.astype("float64").copy()
+        else:
+            self._smoothed_kps = self.alpha * face.kps + (1 - self.alpha) * self._smoothed_kps
+        face.kps = self._smoothed_kps
+        return face
+
+
+def _cap_video_length(video_path: Path, max_seconds: float | None, cache_dir: Path) -> Path:
+    """Return `video_path` unchanged, or a copy trimmed to `max_seconds` if it's longer.
+
+    Per-frame face detection + swap is expensive enough (multiple seconds/frame on CPU)
+    that an untrimmed multi-minute video is impractical; capping keeps a `swap`/`demo` run
+    tractable by default. Pass `max_seconds=None` (or <= 0) to disable.
+    """
+    if not max_seconds or max_seconds <= 0:
+        return video_path
+
+    probe = cv2.VideoCapture(str(video_path))
+    try:
+        fps = probe.get(cv2.CAP_PROP_FPS) or 30
+        frame_count = probe.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+    finally:
+        probe.release()
+
+    duration = frame_count / fps if fps else 0
+    if duration <= max_seconds:
+        return video_path
+
+    import imageio_ffmpeg
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    trimmed_path = cache_dir / f"_{video_path.stem}_capped_{int(max_seconds)}s{video_path.suffix}"
+    if not trimmed_path.exists():
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        command = [ffmpeg_exe, "-y", "-i", str(video_path), "-t", str(max_seconds), "-c", "copy", str(trimmed_path)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg trim failed: {result.stderr}")
+    print(f"{video_path} is {duration:.1f}s, longer than max_seconds={max_seconds}; using trimmed copy {trimmed_path}")
+    return trimmed_path
+
+
 def _mux_audio(silent_video_path: Path, audio_source_path: Path, output_path: Path) -> None:
     """Copy the video stream from `silent_video_path` and the audio from `audio_source_path`.
 
@@ -86,15 +145,30 @@ def run_face_swap(
     execution_provider: str = "cpu",
     model_path: Path | str = "models/inswapper_128.onnx",
     frames_dir: Path | str | None = None,
+    stabilize: bool = True,
+    stabilize_alpha: float = 0.5,
+    enhance: bool = False,
+    enhancer_model_path: Path | str = "models/GFPGANv1.4.pth",
+    max_seconds: float | None = 15.0,
 ) -> Path:
     """Swap the face from `source_face_image_path` onto every frame of `target_video_path`.
 
     Also writes each swapped frame as a PNG into `frames_dir` (defaults to a directory
     named after the target video, alongside the output video) so `combine_frames_with_video`
     can build a side-by-side comparison afterwards.
+
+    `stabilize` smooths the per-frame alignment landmarks (cheap, on by default) to reduce
+    flicker; lower `stabilize_alpha` smooths more but adds lag. `enhance` runs each swapped
+    frame through GFPGAN afterwards to restore detail inswapper_128 loses (off by default —
+    heavy, and ~30-60s/frame on CPU; see `face_enhancement.py`). `max_seconds` (default 15)
+    trims a longer `target_video_path` down first, since per-frame swapping is too slow on
+    CPU to be practical on a multi-minute video; pass `None` to disable.
     """
     output_path = Path(output_video_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    original_target_path = Path(target_video_path)
+    target_video_path = _cap_video_length(original_target_path, max_seconds, output_path.parent)
 
     providers = [_EXECUTION_PROVIDERS.get(execution_provider, "CPUExecutionProvider")]
 
@@ -102,10 +176,16 @@ def run_face_swap(
     face_analyser.prepare(ctx_id=0, det_size=(640, 640))
     swapper = insightface.model_zoo.get_model(str(model_path), providers=providers)
 
+    face_enhancer = None
+    if enhance:
+        from .face_enhancement import FaceEnhancer  # local import: heavy optional dependency
+
+        face_enhancer = FaceEnhancer(enhancer_model_path)
+
     source_image = cv2.imread(str(source_face_image_path))
     source_face = _detect_source_face(face_analyser, source_image, source_face_image_path)
 
-    frames_path = Path(frames_dir) if frames_dir else output_path.parent / "frames" / Path(target_video_path).stem
+    frames_path = Path(frames_dir) if frames_dir else output_path.parent / "frames" / original_target_path.stem
     frames_path.mkdir(parents=True, exist_ok=True)
 
     capture = cv2.VideoCapture(str(target_video_path))
@@ -118,6 +198,8 @@ def run_face_swap(
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     video_writer = cv2.VideoWriter(str(silent_output_path), fourcc, fps, (frame_width, frame_height))
 
+    landmark_smoother = _LandmarkSmoother(stabilize_alpha) if stabilize else None
+
     frame_index = 0
     try:
         while True:
@@ -127,7 +209,12 @@ def run_face_swap(
 
             target_faces = face_analyser.get(frame)
             if target_faces:
-                frame = swapper.get(frame, target_faces[0], source_face, paste_back=True)
+                target_face = target_faces[0]
+                if landmark_smoother is not None:
+                    target_face = landmark_smoother.smooth(target_face)
+                frame = swapper.get(frame, target_face, source_face, paste_back=True)
+                if face_enhancer is not None:
+                    frame = face_enhancer.enhance(frame)
 
             cv2.imwrite(str(frames_path / f"{frame_index:06d}.jpg"), frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
             video_writer.write(frame)
