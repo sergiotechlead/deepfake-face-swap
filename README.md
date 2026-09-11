@@ -56,8 +56,8 @@ single Colab-only notebook.
 </p>
 
 <p align="left">
-  <img src="assets/faces/demo_2/joseph-gordon.jpeg" alt="Second sample source face" height="250">
-  <img src="assets/videos/demo_2/preview.gif" alt="Second side-by-side face swap preview" height="250">
+  <img src="assets/faces/demo_2/joseph-gordon.jpeg" alt="Second sample source face" height="200">
+  <img src="assets/videos/demo_2/preview.gif" alt="Second side-by-side face swap preview" height="200">
 </p>
 <p align="left">
   <sub>Source face <code>assets/faces/demo_2/joseph-gordon.jpeg</code> → swapped onto
